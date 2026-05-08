@@ -1,0 +1,18 @@
+# Node
+node_modules/
+.npm/
+
+# Environment and Secrets
+.env
+*.pem
+*.key
+
+# SQLite
+*.sqlite
+*.sqlite-*
+
+# Logs
+*.log
+
+# OS
+.DS_Store
