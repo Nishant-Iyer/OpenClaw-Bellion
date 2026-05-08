@@ -1,0 +1,81 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.4.20"
+  },
+  "agents": {
+    "defaults": {
+      "llm": { "idleTimeoutSeconds": 300 },
+      "model": { "primary": "google/gemma-4-31b-it" },
+      "thinkingDefault": "high",
+      "imageModel": "google/gemini-1.5-flash",
+      "workspace": "/YOUR/PATH/TO/workspace"
+    },
+    "list": [
+      {
+        "id": "your-agent-id",
+        "name": "Bellion",
+        "agentDir": "/YOUR/PATH/TO/agents/agent",
+        "workspace": "/YOUR/PATH/TO/workspace-agent",
+        "skills": [
+          "gog",
+          "youtube-watcher",
+          "pdf_reader",
+          "calculator",
+          "google_search",
+          "image_generate",
+          "fal-api",
+          "mcp-sqlite",
+          "mcp-brave-search",
+          "mcp-sequential-thinking",
+          "browser-use",
+          "memU"
+        ]
+      }
+    ]
+  },
+  "bindings": [
+    {
+      "agentId": "your-agent-id",
+      "match": {
+        "channel": "telegram",
+        "peer": {
+          "kind": "dm",
+          "id": "YOUR_TELEGRAM_ID"
+        }
+      }
+    }
+  ],
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "YOUR_TELEGRAM_BOT_TOKEN",
+      "dmPolicy": "allowlist",
+      "allowFrom": ["YOUR_TELEGRAM_ID"]
+    }
+  },
+  "plugins": {
+    "entries": {
+      "google": { "enabled": true },
+      "mcp": {
+        "enabled": true,
+        "servers": {
+          "sqlite": {
+            "command": "npx",
+            "args": ["-y", "mcp-sqlite", "--db", "/YOUR/PATH/TO/tenant_data.sqlite"]
+          },
+          "brave-search": {
+            "command": "npx",
+            "args": ["-y", "@brave/brave-search-mcp-server"],
+            "env": { "BRAVE_SEARCH_API_KEY": "YOUR_BRAVE_KEY" }
+          },
+          "sequential-thinking": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+          }
+        }
+      },
+      "browser-use": { "enabled": true, "headless": true },
+      "memU": { "enabled": true, "provider": "sqlite-vss" }
+    }
+  }
+}
