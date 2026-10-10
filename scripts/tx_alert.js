@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const path = '/YOUR/PATH/TO/workspace/live_data.json';
 
 try {
@@ -20,7 +20,11 @@ try {
 
   if (alerts.length > 0) {
     const message = `⚠️ *Large Transaction Alert*\nSir, I have detected anomalous activity today:\n${alerts.join('\n')}\n\nPlease review your accounts.`;
-    execSync(`/opt/homebrew/bin/openclaw message send --channel telegram --target "YOUR_PHONE_NUMBER_HERE" --message "${message}"`);
+    // Pass arguments directly (no shell), so a merchant name containing quotes or
+    // shell characters can't break out of the command.
+    execFileSync('/opt/homebrew/bin/openclaw', [
+      'message', 'send', '--channel', 'telegram', '--target', 'YOUR_TELEGRAM_ID', '--message', message
+    ]);
   }
 } catch (e) {
   // Silently exit if file is missing or unreadable

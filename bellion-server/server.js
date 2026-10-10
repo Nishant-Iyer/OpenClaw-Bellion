@@ -5,7 +5,7 @@ const telegramWebhook = require('./src/webhooks/telegram');
 const app = express();
 app.use(express.json()); // Parses incoming JSON payloads
 
-// Mount the WhatsApp routes
+// Mount the Telegram webhook routes
 app.use('/telegram', telegramWebhook);
 
 const PORT = process.env.PORT || 3000;

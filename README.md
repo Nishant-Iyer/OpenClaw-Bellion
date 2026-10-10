@@ -13,7 +13,9 @@
 
 Everyone on the internet is talking about "Agentic AI," "Multi-Agent Orchestration," and "Autonomous Workflows." Yet, when you look for practical, real-world implementations, you mostly find toy examples or over-engineered chat wrappers. 
 
-**Bellion is an attempt to bridge that gap.** 
+**Bellion is an attempt to bridge that gap.**
+
+**[Case study](https://www.konnectingnots.com/projects/bellion.html)** 
 
 It is not just a chatbot; it is a **Headless, Zero-Trust Financial Architecture**. I built Bellion to run completely locally on my machine, utilizing the [OpenClaw](https://github.com/OpenClaw/OpenClaw) agent runtime to proactively manage my finances, audit my spending, and execute tasks autonomously via Telegram—all while ensuring absolute data privacy.
 
@@ -92,9 +94,20 @@ Create a `.env` file:
 ENCRYPTION_MASTER_KEY=your_64_character_hex_key_here
 TELEGRAM_BOT_TOKEN=your_bot_token
 MY_TELEGRAM_ID=your_chat_id
+TELEGRAM_WEBHOOK_SECRET=a_long_random_string
 PORT=3000
 ```
+Generate the two secrets with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+
+Register the webhook with the same secret, so Telegram signs every request and the server can reject anything else:
+```bash
+curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -d url=https://YOUR_PUBLIC_URL/telegram/webhook \
+  -d secret_token=$TELEGRAM_WEBHOOK_SECRET
+```
 Run the server: `node server.js`
+
+> **Status:** the gateway encrypts and stores every message, but its reply is still a placeholder. The live agent talks to Telegram directly through OpenClaw's channel binding (`openclaw.example.json`). Routing the agent through this encrypted gateway is the next step.
 
 ### Step 3: OpenClaw Configuration
 Update your `openclaw.json` to enable the specific plugins and route them to Telegram:
@@ -115,9 +128,24 @@ Check the `scripts/` directory for background watchers:
 
 ---
 
+## 🗺️ What Runs Where
+
+| Component | Where it runs |
+|---|---|
+| Language model (Gemma) and agent runtime (OpenClaw) | Your machine |
+| Chat history and memory (SQLite, AES-256-GCM encrypted) | Your machine |
+| Bank and card data | Fetched read-only from Plaid's API, stored locally |
+| Messaging | Telegram (messages pass through Telegram's servers) |
+| Optional tools: web search, Google image model, browser | Call out to the web when used |
+
+Your financial records and history stay on your machine and encrypted; the agent still uses a few cloud services to reach you and the web.
+
 ## 🛡️ Security & Zero-Trust
 * **No Cloud Memory:** All memory is stored locally on your machine.
 * **AES-256 Encryption:** Messages received from Telegram are encrypted *before* they are saved to the local SQLite database. Even if the database is compromised, your financial chats remain unreadable without the Master Key.
+* **Verified Webhooks:** The gateway only accepts requests carrying Telegram's secret token, so nobody can forge a message by guessing your chat ID.
+* **No Plaintext Logs:** Decrypted content is never written to the console or log files.
+* **Safe Alerts:** `tx_alert.js` passes arguments directly to the CLI (no shell), so transaction names can't inject commands.
 * **Hard Coded Guardrails:** Bellion is programmed with strict "Read-Only" constraints for financial APIs unless explicitly granted human-in-the-loop authorization.
 
 ---

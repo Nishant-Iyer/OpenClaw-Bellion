@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const axios = require('axios');
 const router = express.Router();
@@ -6,9 +7,26 @@ const { saveInteraction, getRecentHistory } = require('../services/db');
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const MY_TELEGRAM_ID = process.env.MY_TELEGRAM_ID;
+// Set the same value as `secret_token` when registering the webhook (setWebhook).
+// Telegram then sends it in the X-Telegram-Bot-Api-Secret-Token header on every update,
+// which proves the request really came from Telegram. A chat ID alone is not a secret.
+const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
+if (!WEBHOOK_SECRET) {
+    throw new Error('TELEGRAM_WEBHOOK_SECRET is required. Use a long random string and pass it as secret_token to setWebhook.');
+}
+
+function isFromTelegram(req) {
+    const got = Buffer.from(req.get('X-Telegram-Bot-Api-Secret-Token') || '');
+    const want = Buffer.from(WEBHOOK_SECRET);
+    return got.length === want.length && crypto.timingSafeEqual(got, want);
+}
 
 // Telegram Webhook Endpoint
 router.post('/webhook', async (req, res) => {
+    if (!isFromTelegram(req)) {
+        console.warn('[WARN] Rejected webhook call without a valid secret token');
+        return res.sendStatus(401);
+    }
     const body = req.body;
 
     if (body.message) {
@@ -30,7 +48,7 @@ router.post('/webhook', async (req, res) => {
     }
 });
 
-// Core Processing Pipeline (Migrated from WhatsApp)
+// Core Processing Pipeline
 async function handleIncomingMessage(chatId, rawText) {
     try {
         // Step 1: Encrypt and save user's inbound message immediately
@@ -41,11 +59,14 @@ async function handleIncomingMessage(chatId, rawText) {
         const encryptedHistory = await getRecentHistory(chatId, 10);
         let memoryContext = encryptedHistory.map(row => {
             return `${row.role.toUpperCase()}: ${decryptData(row.encrypted_content)}`;
-        }).join('\\n');
+        }).join('\n');
 
-        console.log(`[MEMORY] Decrypted context in RAM: \\n${memoryContext}`);
+        // Never log decrypted content: logs are plaintext files outside the encrypted store.
+        console.log(`[MEMORY] Loaded ${encryptedHistory.length} messages into working memory`);
 
-        // Step 3: Simulation (Will be connected to OpenClaw later)
+        // Step 3: Placeholder reply. The live agent currently talks to Telegram directly
+        // through OpenClaw's own channel binding (see openclaw.example.json); routing it
+        // through this encrypted gateway is the next step.
         const simulatedAIResponse = "This is Bellion on Telegram. I have received your encrypted message.";
 
         // Step 4: Encrypt and save AI's outbound message

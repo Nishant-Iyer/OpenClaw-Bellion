@@ -1,7 +1,12 @@
 const crypto = require('crypto');
 
-// Ensure key is exactly 32 bytes (64 hex characters)
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_MASTER_KEY, 'hex');
+// The key must be exactly 32 bytes (64 hex characters). Fail fast with a clear message
+// instead of a cryptic error on the first message.
+const KEY_HEX = process.env.ENCRYPTION_MASTER_KEY || '';
+if (!/^[0-9a-fA-F]{64}$/.test(KEY_HEX)) {
+    throw new Error('ENCRYPTION_MASTER_KEY must be 64 hex characters (32 bytes). Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+}
+const ENCRYPTION_KEY = Buffer.from(KEY_HEX, 'hex');
 const ALGORITHM = 'aes-256-gcm';
 
 function encryptData(text) {
