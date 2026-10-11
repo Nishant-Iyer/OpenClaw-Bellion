@@ -1,90 +1,66 @@
-# 🌑 Bellion: Zero-Trust Financial Shadow Architecture
+# Bellion: Private AI Finance Agent
 
-<div align="center">
-  <img src="https://img.shields.io/badge/Status-Active-success?style=for-the-badge" alt="Status Active">
-  <img src="https://img.shields.io/badge/Platform-OpenClaw-blue?style=for-the-badge" alt="Platform OpenClaw">
-  <img src="https://img.shields.io/badge/Interface-Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram">
-  <img src="https://img.shields.io/badge/Security-AES--256-red?style=for-the-badge" alt="Security AES-256">
-</div>
+A personal finance agent that runs on my own machine. It sends a daily spending briefing, flags unusual transactions and answers questions about my finances over Telegram, while the language model, transaction history and conversation memory stay local and encrypted.
 
----
+**[Case study](https://www.konnectingnots.com/projects/bellion.html)**
 
-## 📖 The Narrative: Bridging the "Agentic AI" Gap
+## Why I built it
 
-Everyone on the internet is talking about "Agentic AI," "Multi-Agent Orchestration," and "Autonomous Workflows." Yet, when you look for practical, real-world implementations, you mostly find toy examples or over-engineered chat wrappers. 
+Most agentic AI examples are either demos or chat wrappers around a cloud model. Personal finance is a good test of whether an agent is useful in practice, because the data is sensitive and the tasks are routine: checking spending against a budget, spotting unexpected charges and answering ad hoc questions. Bellion follows a few principles common in financial systems: least-privilege, read-only access to accounts; encryption of data at rest; and verified inbound requests.
 
-**Bellion is an attempt to bridge that gap.**
+## Architecture
 
-**[Case study](https://www.konnectingnots.com/projects/bellion.html)** 
+1. **Agent runtime:** [OpenClaw](https://github.com/OpenClaw/OpenClaw) running Google's Gemma (`google/gemma-4-31b-it`) locally. It interprets requests, plans steps and calls tools.
+2. **Messaging gateway:** a Node.js server (`bellion-server`) that receives messages from a private Telegram bot, verifies Telegram's webhook secret and encrypts each message with AES-256-GCM before storing it.
+3. **Tools:** standard [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) servers and OpenClaw plugins give the agent access to data and the web.
 
-It is not just a chatbot; it is a **Headless, Zero-Trust Financial Architecture**. I built Bellion to run completely locally on my machine, utilizing the [OpenClaw](https://github.com/OpenClaw/OpenClaw) agent runtime to proactively manage my finances, audit my spending, and execute tasks autonomously via Telegram—all while ensuring absolute data privacy.
+## Capabilities
 
----
+| Tool | What it does |
+|---|---|
+| Plaid | Pulls read-only bank and card transactions, categorizes them and checks spending against budget targets each morning (scheduled with cron). |
+| `mcp-sqlite` | Runs SQL over the local transaction database, for example anomaly checks across past transactions. |
+| `memU` | Stores long-term notes and preferences in a local `sqlite-vss` vector database, so later answers can use them. |
+| `mcp-brave-search` | Looks up current market and news information when a question needs it. |
+| `mcp-sequential-thinking` | Breaks multi-step planning questions into explicit reasoning steps. |
+| Browser (Playwright) | Reads balances from sites that don't offer an API. |
 
-## 🧠 The Architecture: How It Works
+## Example day
 
-Bellion is built on a modular, privacy-first stack:
+1. **7:00 AM, scheduled briefing.** Bellion fetches yesterday's transactions and sends a summary: spending against the daily budget, total debt and progress toward savings goals.
+2. **Afternoon, ad hoc check.** I ask for an anomaly check on the last 30 days. Bellion queries the database and flags, for example, a recurring subscription I no longer use.
+3. **Evening, planning.** I tell it I want to save an extra $500 next month. It stores the goal, and the next day's budget checks take it into account.
 
-1. **The Brain (OpenClaw):** Runs locally using the `google/gemma-4-31b-it` model. It processes language, makes decisions, and orchestrates tools.
-2. **The Interface (Telegram):** A Node.js Zero-Trust Server (`bellion-server`) intercepts messages from my private Telegram bot, encrypts them via AES-256, and routes them to the local LLM.
-3. **The Nervous System (MCP & Plugins):** Bellion uses the **Model Context Protocol (MCP)** and specialized OpenClaw plugins to interact with the real world.
+## What runs where
 
----
+| Component | Where it runs |
+|---|---|
+| Language model (Gemma) and agent runtime (OpenClaw) | Your machine |
+| Chat history and memory (SQLite, AES-256-GCM encrypted) | Your machine |
+| Bank and card data | Fetched read-only from Plaid's API, stored locally |
+| Messaging | Telegram (messages pass through Telegram's servers) |
+| Optional tools: web search, Google image model, browser | Call out to the web when used |
 
-## ⚡ The "Supercharged" Skills & Plugins
+Financial records and history stay on your machine and encrypted; the agent still uses a few cloud services to reach you and the web.
 
-To make Bellion a true "Staff-Level" assistant, I expanded its capabilities beyond basic text generation. Here are the core plugins running in this architecture and how they function:
+## Security
 
-### 1. Plaid Integration (The Data Ingestion)
-* **What it does:** Securely fetches read-only banking and credit card transaction data.
-* **The Impact:** Instead of manually downloading CSVs, Bellion automatically pulls my daily spending, categorizes it, and checks it against my burn-rate targets every morning at 7:00 AM via a Cron job.
+- **Local storage:** memory and transaction history are stored only on your machine.
+- **Encryption at rest:** messages from Telegram are encrypted with AES-256-GCM before they are written to the local SQLite database, so the database is unreadable without the master key.
+- **Verified webhooks:** the gateway accepts only requests carrying Telegram's secret token, so a message can't be forged by guessing the chat ID.
+- **No plaintext logs:** decrypted content is never written to the console or log files.
+- **Safe alerts:** `tx_alert.js` passes arguments directly to the CLI without a shell, so transaction names can't inject commands.
+- **Read-only account access:** the Plaid integration uses read-only transaction data and cannot move money.
 
-### 2. Browser Use (The "Hands")
-* **What it does:** Allows Bellion to launch a headless Playwright browser, navigate the web, click buttons, and extract data just like a human.
-* **The Impact:** When Plaid APIs are delayed, or if I need Bellion to log into a proprietary portal (like checking a live 401k dashboard), it can autonomously navigate the UI and retrieve the exact balance.
+## Setup
 
-### 3. Model Context Protocol (MCP) Power-Ups
-By integrating standard MCP servers into OpenClaw, Bellion gained enterprise-grade capabilities:
-* **`mcp-sqlite`:** Grants Bellion direct SQL access to the local `tenant_data.sqlite` database. It can instantly run anomaly detection queries across thousands of my past transactions.
-* **`mcp-brave-search`:** Gives Bellion live internet access. If I ask, "How did the S&P 500 perform today?", it pulls real-time financial data to contextualize my portfolio.
-* **`mcp-sequential-thinking`:** Forces the agent into a "chain-of-thought" loop for complex questions (e.g., "Given inflation trends and my current debt, build a 6-month payoff strategy").
+### 1. Telegram bot
+1. Message [@BotFather](https://t.me/BotFather) on Telegram and create a new bot. Save the `TELEGRAM_BOT_TOKEN`.
+2. Get your personal Telegram chat ID (for example with [@userinfobot](https://t.me/userinfobot)).
+3. Add both to your `.env` file so the server responds only to you.
 
-### 4. memU (Infinite Vector Memory)
-* **What it does:** Replaces static memory files with a persistent `sqlite-vss` vector database.
-* **The Impact:** Bellion remembers everything. If I text, *"How much did I spend on Ubers last month compared to February?"*, it semantically searches its memory vault, retrieves the exact figures, and generates a comparison report instantly.
-
----
-
-## 👨‍💻 Daily Workflow: How a "Normal Person" Uses Agentic AI
-
-Agentic AI shouldn't require you to sit at a terminal. Here is what my actual, daily workflow looks like:
-
-1. **7:00 AM - The Proactive Briefing:**
-   I wake up to a Telegram message. Bellion has already run its Cron job, fetched my Plaid data, and sent me a formatted briefing:
-   > *"Good morning. Yesterday you spent $42 on food, breaking your 'Daily Zero' goal. Total debt is down to $X. You are on track to hit your $2,000 Parents Vault target in 14 days."*
-
-2. **2:00 PM - The Analytical Query:**
-   I text Bellion from my phone: *"Run an anomaly check on my checking account for the last 30 days."*
-   Bellion uses `mcp-sqlite` to query the database and replies:
-   > *"I found a recurring $14.99 charge from a vendor you haven't used in 6 months. Would you like me to use the browser tool to navigate to their site and attempt a cancellation?"*
-
-3. **8:00 PM - Long-Term Planning:**
-   I ask: *"Remember that I want to save an extra $500 next month for a trip."*
-   Bellion uses `memU` to store this in its vector database. The next day, its budget audits will automatically adjust to account for this new constraint.
-
----
-
-## 🛠️ Setup & Deployment Guide
-
-If you want to run your own Zero-Trust Bellion instance, follow these steps:
-
-### Step 1: Telegram Bot Setup
-1. Message `@BotFather` on Telegram and create a new bot. Save the `TELEGRAM_BOT_TOKEN`.
-2. Get your personal Telegram Chat ID (you can use `@userinfobot`).
-3. Add these to your `.env` file to ensure the server *only* responds to you.
-
-### Step 2: Zero-Trust Server Setup
-Navigate to `bellion-server/` and install dependencies:
+### 2. Messaging gateway
+Install dependencies:
 ```bash
 cd bellion-server
 npm install
@@ -109,8 +85,8 @@ Run the server: `node server.js`
 
 > **Status:** the gateway encrypts and stores every message, but its reply is still a placeholder. The live agent talks to Telegram directly through OpenClaw's channel binding (`openclaw.example.json`). Routing the agent through this encrypted gateway is the next step.
 
-### Step 3: OpenClaw Configuration
-Update your `openclaw.json` to enable the specific plugins and route them to Telegram:
+### 3. OpenClaw configuration
+Enable the plugins in your `openclaw.json`:
 ```json
 "plugins": {
   "entries": {
@@ -121,32 +97,15 @@ Update your `openclaw.json` to enable the specific plugins and route them to Tel
 }
 ```
 
-### Step 4: The Background Workers
-Check the `scripts/` directory for background watchers:
-* `battery_alert.sh`: Pings your Telegram if your MacBook battery drops below 10%, ensuring your agent doesn't die.
-* `tx_alert.js`: Monitors local data streams for transactions over $500 and alerts you instantly.
+### 4. Background scripts
+The `scripts/` directory has two watchers:
+- `battery_alert.sh` sends a Telegram alert if the host laptop's battery drops below 10%, so the agent doesn't go offline unnoticed.
+- `tx_alert.js` alerts on transactions over $500.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
 
 ---
 
-## 🗺️ What Runs Where
-
-| Component | Where it runs |
-|---|---|
-| Language model (Gemma) and agent runtime (OpenClaw) | Your machine |
-| Chat history and memory (SQLite, AES-256-GCM encrypted) | Your machine |
-| Bank and card data | Fetched read-only from Plaid's API, stored locally |
-| Messaging | Telegram (messages pass through Telegram's servers) |
-| Optional tools: web search, Google image model, browser | Call out to the web when used |
-
-Your financial records and history stay on your machine and encrypted; the agent still uses a few cloud services to reach you and the web.
-
-## 🛡️ Security & Zero-Trust
-* **No Cloud Memory:** All memory is stored locally on your machine.
-* **AES-256 Encryption:** Messages received from Telegram are encrypted *before* they are saved to the local SQLite database. Even if the database is compromised, your financial chats remain unreadable without the Master Key.
-* **Verified Webhooks:** The gateway only accepts requests carrying Telegram's secret token, so nobody can forge a message by guessing your chat ID.
-* **No Plaintext Logs:** Decrypted content is never written to the console or log files.
-* **Safe Alerts:** `tx_alert.js` passes arguments directly to the CLI (no shell), so transaction names can't inject commands.
-* **Hard Coded Guardrails:** Bellion is programmed with strict "Read-Only" constraints for financial APIs unless explicitly granted human-in-the-loop authorization.
-
----
-*Built by Nishant Iyer - Sr. Data Analyst bridging the gap between theoretical AI and real-world application.*
+Built by [Nishant Iyer](https://www.konnectingnots.com), Senior Associate at Capital One.
