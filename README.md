@@ -108,4 +108,4 @@ MIT. See [LICENSE](LICENSE).
 
 ---
 
-Built by [Nishant Iyer](https://www.konnectingnots.com), Senior Data Analyst at Capital One.
+Built by [Nishant Iyer](https://www.konnectingnots.com), Senior Associate at Capital One.
