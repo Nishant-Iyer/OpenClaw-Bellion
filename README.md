@@ -2,7 +2,7 @@
 
 A personal finance agent that runs on my own machine. It sends a daily spending briefing, flags unusual transactions and answers questions about my finances over Telegram, while the language model, transaction history and conversation memory stay local and encrypted.
 
-**[Case study](https://www.konnectingnots.com/projects/bellion.html)**
+**[Case study](https://nishant-iyer.github.io/projects/bellion.html)**
 
 ## Why I built it
 
@@ -108,4 +108,4 @@ MIT. See [LICENSE](LICENSE).
 
 ---
 
-Built by [Nishant Iyer](https://www.konnectingnots.com), Senior Associate at Capital One.
+Built by [Nishant Iyer](https://nishant-iyer.github.io), Senior Associate at Capital One.
